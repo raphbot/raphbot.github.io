@@ -33,6 +33,9 @@ button:disabled{opacity:.5;cursor:default}
 .btn{font:inherit;font-size:1rem;min-height:44px;box-sizing:border-box;display:inline-flex;align-items:center;padding:9px 18px;border-radius:4px;background:#3a4144;color:#fff;text-decoration:none}
 #msg{text-align:center;font-size:.8rem;color:var(--muted);min-height:1em}
 footer b{font-weight:700}
+.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button.sec{background:transparent;color:var(--text);border:1px solid var(--text)}
+input.nm{text-align:left;text-transform:none}
 </style>
 </head>
 <body>
@@ -41,7 +44,7 @@ footer b{font-weight:700}
 <h1>Getränke</h1>
 <div class="grid" id="grid"></div>
 </main>
-<footer><div class="sumline"><span>Summe:</span><b id="sum">0,00 €</b></div><button id="pdfBtn" type="button">PDF erstellen</button><div id="result"></div><div id="msg" role="status"></div></footer>
+<footer><div class="sumline"><span>Summe:</span><b id="sum">0,00 €</b></div><div class="btns"><button id="addBtn" type="button" class="sec">Artikel hinzufügen</button><button id="pdfBtn" type="button">PDF erstellen</button></div><div id="result"></div><div id="msg" role="status"></div></footer>
 <script>
 const data=[
 ["Alkoholfreies",[["Wasser 0,4L","3,40"],["Coke Zero 0,2L","3,60"],["Fritz Limonaden / Kola 0,4L","4,20"],["Club Mate 0,33L","4,20"],["Säfte / Schorlen 0,4L","4,20"]]],
@@ -77,6 +80,38 @@ function calc(){
   });
   document.getElementById('sum').textContent=sum.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 }
+
+let extraSec=null;const extraRows=[];
+function dropExtra(e){
+  const i=rows.indexOf(e.o);if(i>-1)rows.splice(i,1);
+  const j=extraRows.indexOf(e);if(j>-1)extraRows.splice(j,1);
+  e.r.remove();
+  if(extraSec&&!extraSec.querySelector('.row')){extraSec.remove();extraSec=null;}
+  calc();
+}
+function pruneExtra(){extraRows.slice().forEach(e=>{if(!e.nm.value.trim())dropExtra(e);});}
+document.getElementById('pdfBtn').addEventListener('click',pruneExtra);
+document.getElementById('addBtn').addEventListener('click',()=>{
+  pruneExtra();
+  if(!extraSec){
+    extraSec=document.createElement('section');
+    extraSec.innerHTML='<h2>Sonstiges</h2><div class="head"><span>Position</span><span>Preis €</span><span>Anzahl</span></div>';
+    grid.appendChild(extraSec);
+  }
+  const r=document.createElement('div');r.className='row';
+  r.innerHTML='<input type="text" class="nm" placeholder="Bezeichnung" aria-label="Name der Position"><input type="text" inputmode="decimal" placeholder="0,00" aria-label="Preis"><input type="number" min="0" step="1" inputmode="numeric" value="" aria-label="Anzahl">';
+  const nm=r.children[0];
+  const o={get name(){return nm.value.trim()||'Sonstiges';},price:r.children[1],qty:r.children[2]};
+  o.price.addEventListener('input',calc);o.qty.addEventListener('input',calc);
+  rows.push(o);extraSec.appendChild(r);
+  const ent={o,r,nm};extraRows.push(ent);
+  r.addEventListener('focusout',()=>{setTimeout(()=>{
+    if(!r.isConnected||r.contains(document.activeElement))return;
+    if(!nm.value.trim())dropExtra(ent);
+  },0);});
+  nm.focus();
+  try{r.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+});
 
 document.getElementById('rech').addEventListener('input',e=>{document.getElementById('nr').value=e.target.value?e.target.value.split('-').join(''):'';});
 
